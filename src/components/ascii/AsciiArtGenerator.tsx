@@ -8,6 +8,7 @@ import { Select } from '../ui/Select';
 import { Toggle } from '../ui/Toggle';
 import { Card } from '../ui/Card';
 import { Modal } from '../ui/Modal';
+import html2canvas from 'html2canvas';
 import {
   AsciiConverterOptions,
   DEFAULT_OPTIONS,
@@ -25,7 +26,7 @@ export const AsciiArtGenerator: React.FC = () => {
     ...DEFAULT_OPTIONS,
     characterSet: CHARACTER_SETS.standard,
   });
-  const [previewMode, setPreviewMode] = useState<'ascii' | 'image'>('ascii');
+
   const [darkBackground, setDarkBackground] = useState<boolean>(false);
   const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
 
@@ -253,6 +254,60 @@ export const AsciiArtGenerator: React.FC = () => {
     }, 100);
   };
 
+  // Download as Image (PNG)
+  const downloadAsImage = async () => {
+    if (!asciiOutputRef.current) return;
+
+    try {
+      // Create a wrapper div with the correct background color
+      const wrapper = document.createElement('div');
+      wrapper.style.backgroundColor = darkBackground ? 'black' : 'white';
+      wrapper.style.padding = '20px';
+      wrapper.style.display = 'inline-block';
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '-9999px';
+      
+      // Clone the ASCII content
+      const clone = asciiOutputRef.current.cloneNode(true) as HTMLElement;
+      clone.style.overflow = 'visible';
+      clone.style.maxWidth = 'none';
+      clone.style.width = 'auto';
+      clone.style.height = 'auto';
+      clone.style.position = 'static';
+      
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      // Take screenshot with html2canvas
+      const canvas = await html2canvas(wrapper, {
+        backgroundColor: darkBackground ? '#000000' : '#ffffff',
+        scale: 2, // Higher quality
+        logging: false,
+        allowTaint: true,
+        useCORS: true
+      });
+
+      // Remove the temporary elements
+      document.body.removeChild(wrapper);
+
+      // Convert to PNG and download
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = imgData;
+      link.download = 'ascii-art.png';
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        URL.revokeObjectURL(link.href);
+      }, 100);
+    } catch (error) {
+      console.error('Error generating image:', error);
+      alert('Failed to generate image. Please try again.');
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 w-full h-full overflow-hidden">
       {/* Input section */}
@@ -400,21 +455,7 @@ export const AsciiArtGenerator: React.FC = () => {
         <Card title="ASCII Output" className="h-full flex flex-col">
           <div className="flex justify-between mb-4 flex-shrink-0">
             <div className="flex gap-2">
-              <Button
-                variant={previewMode === 'ascii' ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => setPreviewMode('ascii')}
-              >
-                ASCII
-              </Button>
-              <Button
-                variant={previewMode === 'image' ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => setPreviewMode('image')}
-                disabled={!image}
-              >
-                Original
-              </Button>
+
               <Button
                 variant="secondary"
                 size="sm"
@@ -441,6 +482,9 @@ export const AsciiArtGenerator: React.FC = () => {
               <Button variant="secondary" size="sm" onClick={downloadAsHtml} disabled={!asciiArt}>
                 Download HTML
               </Button>
+              <Button variant="secondary" size="sm" onClick={downloadAsImage} disabled={!asciiArt}>
+                Download PNG
+              </Button>
             </div>
           </div>
 
@@ -458,105 +502,87 @@ export const AsciiArtGenerator: React.FC = () => {
                 <div className="text-red-500 text-xl font-bold">Processing...</div>
               </div>
             )}
-            {previewMode === 'ascii' ? (
-              <>
-                {asciiArt && !options.colored && (
-                  <div 
-                    className="h-full w-full p-4"
-                    ref={asciiOutputRef}
-                    style={{
-                      overflowX: 'auto',
-                      overflowY: 'auto',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <pre
-                      style={{
-                        fontFamily: options.fontFamily,
-                        fontSize: options.fontSize,
-                        lineHeight: options.lineHeight,
-                        margin: 0,
-                        whiteSpace: 'pre',
-                        color: darkBackground ? '#e5e7eb' : '#111111',
-                        display: 'inline-block',
-                        minWidth: '100%',
-                        width: 'fit-content',
-                        overflowWrap: 'normal',
-                        wordBreak: 'keep-all',
-                        overflow: 'visible',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      {asciiArt.replace(/\\n/g, '\n')}
-                    </pre>
-                  </div>
-                )}
-                {asciiArt && options.colored && (
-                  <div
-                    className="h-full w-full p-4"
-                    ref={asciiOutputRef}
-                    style={{
-                      overflowX: 'auto',
-                      overflowY: 'auto',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: options.fontFamily,
-                        fontSize: options.fontSize,
-                        lineHeight: options.lineHeight,
-                        color: darkBackground ? '#e5e7eb' : '#111111',
-                        background: 'transparent',
-                        whiteSpace: 'pre',
-                        display: 'inline-block',
-                        minWidth: '100%',
-                        width: 'fit-content',
-                        overflowWrap: 'normal',
-                        wordBreak: 'keep-all',
-                        overflow: 'visible',
-                        boxSizing: 'border-box'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
-                    />
-                  </div>
-                )}
-                {!asciiArt && !isProcessing && (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-600">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 mb-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <p className="text-lg font-medium">ASCII output will appear here</p>
-                    <p className="text-sm mt-1">Upload an image to get started</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                {image ? (
-                  <Image
-                    src={image.src}
-                    alt="Original"
-                    width={800}
-                    height={600}
-                    className="max-w-full max-h-full object-contain"
+            {asciiArt && !options.colored && (
+              <div 
+                className="h-full w-full p-4"
+                ref={asciiOutputRef}
+                style={{
+                  overflowX: 'auto',
+                  overflowY: 'auto',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <pre
+                  style={{
+                    fontFamily: options.fontFamily,
+                    fontSize: options.fontSize,
+                    lineHeight: options.lineHeight,
+                    margin: 0,
+                    whiteSpace: 'pre',
+                    color: darkBackground ? '#e5e7eb' : '#111111',
+                    display: 'inline-block',
+                    minWidth: '100%',
+                    width: 'fit-content',
+                    overflowWrap: 'normal',
+                    wordBreak: 'keep-all',
+                    overflow: 'visible',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {asciiArt.replace(/\\n/g, '\n')}
+                </pre>
+              </div>
+            )}
+            {asciiArt && options.colored && (
+              <div
+                className="h-full w-full p-4"
+                ref={asciiOutputRef}
+                style={{
+                  overflowX: 'auto',
+                  overflowY: 'auto',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: options.fontFamily,
+                    fontSize: options.fontSize,
+                    lineHeight: options.lineHeight,
+                    color: darkBackground ? '#e5e7eb' : '#111111',
+                    background: 'transparent',
+                    whiteSpace: 'pre',
+                    display: 'inline-block',
+                    minWidth: '100%',
+                    width: 'fit-content',
+                    overflowWrap: 'normal',
+                    wordBreak: 'keep-all',
+                    overflow: 'visible',
+                    boxSizing: 'border-box'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
+                />
+              </div>
+            )}
+            {!asciiArt && !isProcessing && (
+              <div className="flex flex-col items-center justify-center h-full text-gray-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-12 w-12 mb-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
-                ) : (
-                  <div className="text-gray-600">No image selected</div>
-                )}
+                </svg>
+                <p className="text-lg font-medium">ASCII output will appear here</p>
+                <p className="text-sm mt-1">Upload an image to get started</p>
               </div>
             )}
           </div>
