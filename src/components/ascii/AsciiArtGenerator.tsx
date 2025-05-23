@@ -324,7 +324,7 @@ export const AsciiArtGenerator: React.FC = () => {
               id="width"
               label="Width"
               min={20}
-              max={200}
+              max={150} // Reduced max width to prevent breaking
               step={5}
               value={options.width}
               onChange={value => updateOption('width', value)}
@@ -346,7 +346,7 @@ export const AsciiArtGenerator: React.FC = () => {
               id="line-height"
               label="Line Height"
               min={0.5}
-              max={2}
+              max={1.2}
               step={0.1}
               value={options.lineHeight}
               onChange={value => updateOption('lineHeight', value)}
@@ -441,7 +441,13 @@ export const AsciiArtGenerator: React.FC = () => {
           </div>
 
           <div
-            className={`relative ${darkBackground ? 'bg-black' : 'bg-white'} rounded-md overflow-hidden flex-grow h-[50vh] p-4 transition-colors flex flex-col`}
+            className={`relative ${darkBackground ? 'bg-black' : 'bg-white'} rounded-md flex-grow h-[50vh] transition-colors flex flex-col`}
+            style={{
+              maxWidth: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
           >
             {isProcessing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
@@ -451,16 +457,31 @@ export const AsciiArtGenerator: React.FC = () => {
             {previewMode === 'ascii' ? (
               <>
                 {asciiArt && !options.colored && (
-                  <div className="whitespace-pre overflow-auto h-full" ref={asciiOutputRef}>
+                  <div 
+                    className="h-full w-full p-4"
+                    ref={asciiOutputRef}
+                    style={{
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
                     <pre
                       style={{
                         fontFamily: options.fontFamily,
                         fontSize: options.fontSize,
                         lineHeight: options.lineHeight,
                         margin: 0,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all',
+                        whiteSpace: 'pre',
                         color: darkBackground ? '#e5e7eb' : '#111111',
+                        display: 'inline-block',
+                        minWidth: '100%',
+                        width: 'fit-content',
+                        overflowWrap: 'normal',
+                        wordBreak: 'keep-all',
+                        overflow: 'visible',
+                        boxSizing: 'border-box'
                       }}
                     >
                       {asciiArt.replace(/\\n/g, '\n')}
@@ -469,22 +490,34 @@ export const AsciiArtGenerator: React.FC = () => {
                 )}
                 {asciiArt && options.colored && (
                   <div
+                    className="h-full w-full p-4"
                     ref={asciiOutputRef}
                     style={{
-                      fontFamily: options.fontFamily,
-                      fontSize: options.fontSize,
-                      lineHeight: options.lineHeight,
-                      color: darkBackground ? '#e5e7eb' : '#111111',
-                      background: 'transparent',
-                      borderRadius: '0.375rem',
-                      overflow: 'auto',
-                      height: '100%',
-                      padding: '1rem',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box'
                     }}
-                    dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
-                  />
+                  >
+                    <div
+                      style={{
+                        fontFamily: options.fontFamily,
+                        fontSize: options.fontSize,
+                        lineHeight: options.lineHeight,
+                        color: darkBackground ? '#e5e7eb' : '#111111',
+                        background: 'transparent',
+                        whiteSpace: 'pre',
+                        display: 'inline-block',
+                        minWidth: '100%',
+                        width: 'fit-content',
+                        overflowWrap: 'normal',
+                        wordBreak: 'keep-all',
+                        overflow: 'visible',
+                        boxSizing: 'border-box'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
+                    />
+                  </div>
                 )}
                 {!asciiArt && !isProcessing && (
                   <div className="flex flex-col items-center justify-center h-full text-gray-600">
@@ -542,43 +575,40 @@ export const AsciiArtGenerator: React.FC = () => {
         onClose={() => setIsFullscreenOpen(false)}
         title="ASCII Art Preview"
       >
-        <div 
-          className={`p-2 rounded-md ${darkBackground ? 'bg-black' : 'bg-white'}`}
-          style={{ display: 'inline-block', minWidth: 'fit-content' }}
-        >
-          {options.colored ? (
-            <div
-              style={{
-                fontFamily: 'monospace', // Always use monospace for optimal viewing
-                fontSize: FONT_SIZE_LIMITS.optimal, // Use optimal font size in fullscreen
-                lineHeight: options.lineHeight, // Use the current line height
-                color: darkBackground ? '#e5e7eb' : '#111111',
-                background: 'transparent',
-                display: 'block', // Use block to maintain width
-                whiteSpace: 'pre', // Use pre to preserve formatting
-                letterSpacing: 0, // No letter spacing for proper alignment
-                overflow: 'visible', // Ensure content is not cut off
-              }}
-              dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
-            />
-          ) : (
-            <pre
-              style={{
-                fontFamily: 'monospace', // Always use monospace for optimal viewing
-                fontSize: FONT_SIZE_LIMITS.optimal, // Use optimal font size in fullscreen
-                lineHeight: options.lineHeight, // Use the current line height
-                margin: 0,
-                padding: 0,
-                whiteSpace: 'pre', // Use pre to preserve formatting
-                letterSpacing: 0, // No letter spacing for proper alignment
-                display: 'block', // Use block to maintain width
-                color: darkBackground ? '#e5e7eb' : '#111111',
-                overflow: 'visible', // Ensure content is not cut off
-              }}
-            >
-              {asciiArt.replace(/\\n/g, '\n')}
-            </pre>
-          )}
+        <div className="h-full w-full flex items-center justify-center">
+          <div className={`${darkBackground ? 'bg-black' : 'bg-white'} p-4 rounded overflow-auto`} style={{ maxHeight: '80vh', maxWidth: '90vw' }}>
+            {options.colored ? (
+              <div
+                style={{
+                  fontFamily: options.fontFamily, // Use the selected font family
+                  fontSize: options.fontSize, // Use the user's selected font size
+                  lineHeight: options.lineHeight, // Use the current line height
+                  color: darkBackground ? '#e5e7eb' : '#111111',
+                  background: 'transparent',
+                  display: 'inline-block', // Use inline-block for proper centering
+                  whiteSpace: 'pre', // Preserve ASCII art formatting
+                  textAlign: 'left', // Keep text alignment left for ASCII art
+                }}
+                dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
+              />
+            ) : (
+              <pre
+                style={{
+                  fontFamily: options.fontFamily, // Use the selected font family
+                  fontSize: options.fontSize, // Use the user's selected font size
+                  lineHeight: options.lineHeight, // Use the current line height
+                  margin: 0,
+                  padding: 0,
+                  whiteSpace: 'pre', // Preserve ASCII art formatting
+                  display: 'inline-block', // Use inline-block for proper centering
+                  textAlign: 'left', // Keep text alignment left for ASCII art
+                  color: darkBackground ? '#e5e7eb' : '#111111'
+                }}
+              >
+                {asciiArt.replace(/\\n/g, '\n')}
+              </pre>
+            )}
+          </div>
         </div>
       </Modal>
     </div>
