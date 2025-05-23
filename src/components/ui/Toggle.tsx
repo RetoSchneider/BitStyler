@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 
@@ -9,12 +9,7 @@ interface ToggleProps {
   id: string;
 }
 
-export const Toggle: React.FC<ToggleProps> = ({
-  checked,
-  onChange,
-  label,
-  id,
-}) => {
+export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, id }) => {
   return (
     <div className="flex items-center justify-between mb-4">
       <label htmlFor={id} className="text-sm font-medium text-gray-300">

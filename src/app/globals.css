@@ -20,24 +20,30 @@ body {
 }
 
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold uppercase tracking-wider text-red-700;
   }
-  
+
   h1 {
     @apply text-4xl mb-6;
     text-shadow: 0 0 10px rgba(158, 11, 15, 0.5);
   }
-  
+
   h2 {
     @apply text-3xl mb-4;
   }
-  
+
   h3 {
     @apply text-2xl mb-3;
   }
-  
-  pre, code {
+
+  pre,
+  code {
     font-family: 'Roboto Mono', monospace;
   }
 }
@@ -47,7 +53,7 @@ body {
     @apply border-2 border-red-900 relative;
     box-shadow: 0 0 15px rgba(158, 11, 15, 0.3);
   }
-  
+
   .imperial-border::before {
     content: '';
     position: absolute;
@@ -55,24 +61,31 @@ body {
     left: -2px;
     right: -2px;
     bottom: -2px;
-    background: linear-gradient(45deg, transparent 30%, var(--imperial-red) 45%, var(--imperial-red) 55%, transparent 70%);
+    background: linear-gradient(
+      45deg,
+      transparent 30%,
+      var(--imperial-red) 45%,
+      var(--imperial-red) 55%,
+      transparent 70%
+    );
     background-size: 200% 200%;
     animation: borderGlow 4s ease infinite;
     z-index: -1;
   }
-  
+
   .imperial-header {
     @apply bg-gradient-to-r from-red-900 via-red-800 to-red-900 text-gray-200 py-2 px-4 uppercase tracking-widest font-bold;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
   }
-  
+
   .warhammer-input {
     @apply bg-gray-900 border-2 border-gray-700 text-gray-200 px-3 py-2 focus:border-red-700 focus:outline-none transition-colors;
   }
 }
 
 @keyframes borderGlow {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
     opacity: 0.5;
   }

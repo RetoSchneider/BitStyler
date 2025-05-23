@@ -1,6 +1,6 @@
 /**
  * ASCII Art Converter Utility
- * 
+ *
  * This utility provides functions to convert images to ASCII art with various configuration options.
  */
 
@@ -11,10 +11,6 @@ export interface AsciiConverterOptions {
   width: number;
   // Whether to invert the brightness
   invert: boolean;
-  // Contrast adjustment (-1 to 1)
-  contrast: number;
-  // Brightness adjustment (-1 to 1)
-  brightness: number;
   // Whether to use color in the output
   colored: boolean;
   // Line height for the output
@@ -27,10 +23,8 @@ export interface AsciiConverterOptions {
 
 export const DEFAULT_OPTIONS: AsciiConverterOptions = {
   characterSet: '@%#*+=-:. ',
-  width: 80,
-  invert: false,
-  contrast: 0,
-  brightness: 0,
+  width: 100,
+  invert: true, // Default to inverted for white background (dark text on light background)
   colored: false,
   lineHeight: 1,
   fontSize: 12,
@@ -40,13 +34,8 @@ export const DEFAULT_OPTIONS: AsciiConverterOptions = {
 // Predefined character sets
 export const CHARACTER_SETS = {
   standard: '@%#*+=-:. ',
-  detailed: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
+  simple: '#:.',
   blocks: '█▓▒░ ',
-  simple: '#@%*+=-:. ',
-  numbers: '9876543210 ',
-  binary: '10 ',
-  warhammer: '■Ѱ☠Ѧ◊⚜☣◘■#&%Ѳϟ☣=+Ѩ*∞҈⚙;:. ',
-  imperial: '⚜☠☣⚙▓#%&*█▒░◊+*=;:. ',
 };
 
 /**
@@ -55,86 +44,7 @@ export const CHARACTER_SETS = {
  * @param options - Configuration options
  * @returns ASCII art as string
  */
-/**
- * Detects edges in the image data
- */
-const detectEdges = (imageData: ImageData): ImageData => {
-  const canvas = document.createElement('canvas');
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.putImageData(imageData, 0, 0);
-  
-  const output = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = output.data;
-  const width = imageData.width;
-  const height = imageData.height;
-  
-  // Simple Sobel operator for edge detection
-  const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
-  const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
-  
-  // Create a temporary array to store the original data
-  const origData = new Uint8ClampedArray(data);
-  
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
-      let magX = 0;
-      let magY = 0;
-      
-      // Apply the convolution
-      for (let ky = -1; ky <= 1; ky++) {
-        for (let kx = -1; kx <= 1; kx++) {
-          const idx = ((y + ky) * width + (x + kx)) * 4;
-          const pixVal = (origData[idx] + origData[idx + 1] + origData[idx + 2]) / 3;
-          
-          magX += pixVal * sobelX[(ky + 1) * 3 + (kx + 1)];
-          magY += pixVal * sobelY[(ky + 1) * 3 + (kx + 1)];
-        }
-      }
-      
-      // Calculate gradient magnitude
-      const mag = Math.sqrt(magX * magX + magY * magY);
-      
-      // Set pixel value
-      const outIdx = (y * width + x) * 4;
-      data[outIdx] = data[outIdx + 1] = data[outIdx + 2] = Math.min(255, mag);
-    }
-  }
-  
-  return output;
-};
-
-/**
- * Enhances the details in the image by combining the original with edge detection
- */
-const enhanceDetails = (imageData: ImageData, edgeWeight: number = 0.3): ImageData => {
-  const edgeData = detectEdges(imageData);
-  const canvas = document.createElement('canvas');
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  const ctx = canvas.getContext('2d')!;
-  
-  // Draw original image
-  ctx.putImageData(imageData, 0, 0);
-  
-  // Overlay edge data with reduced opacity
-  const blendedData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = blendedData.data;
-  const edgeDataArr = edgeData.data;
-  
-  for (let i = 0; i < data.length; i += 4) {
-    // Blend edge data with original image
-    const edgeIntensity = (edgeDataArr[i] + edgeDataArr[i + 1] + edgeDataArr[i + 2]) / 3;
-    
-    // Enhance contrast around edges
-    data[i] = Math.min(255, data[i] * (1 - edgeWeight) + edgeIntensity * edgeWeight);
-    data[i + 1] = Math.min(255, data[i + 1] * (1 - edgeWeight) + edgeIntensity * edgeWeight);
-    data[i + 2] = Math.min(255, data[i + 2] * (1 - edgeWeight) + edgeIntensity * edgeWeight);
-  }
-  
-  return blendedData;
-};
+// Edge detection and detail enhancement functions removed to simplify the code
 
 export const imageToAscii = (
   imageData: ImageData,
@@ -142,54 +52,64 @@ export const imageToAscii = (
 ): string => {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const { width, characterSet, invert } = opts;
-  
+
   // Calculate a better aspect ratio (characters are taller than wide)
-  const aspectRatio = 0.4; // Typical character height/width ratio
+  const aspectRatio = 0.5; // Character height/width ratio adjustment (matches vanilla JS example)
   const height = Math.floor((imageData.height / imageData.width) * width * aspectRatio);
   const blockWidth = Math.floor(imageData.width / width);
   const blockHeight = Math.floor(imageData.height / height);
-  
+
+  const pixels = imageData.data;
   let result = '';
-  
-  // Apply brightness and contrast adjustments
-  const adjustedData = applyAdjustments(imageData, opts);
-  
-  // Enhance details with edge detection
-  const enhancedData = enhanceDetails(adjustedData, 0.3);
-  
-  // Process blocks and build ASCII art
+
+  // Process each block and convert to ASCII
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      // Get the position of this block in the image
       const blockStartX = x * blockWidth;
       const blockStartY = y * blockHeight;
-      
-      // Get brightness with smart sampling
-      const { brightness, variance } = getSmartSample(
-        enhancedData,
-        blockStartX,
-        blockStartY,
-        blockWidth,
-        blockHeight
-      );
-      
-      // Use variance to select characters that represent detail
-      let effectiveBrightness = brightness;
-      if (variance > 0.2) { // High variance means more detail
-        // Boost contrast in detailed areas
-        effectiveBrightness = brightness > 0.5 ? brightness + 0.1 : brightness - 0.1;
-        effectiveBrightness = Math.max(0, Math.min(1, effectiveBrightness));
+
+      // Calculate average brightness for this block
+      let totalBrightness = 0;
+      let pixelCount = 0;
+
+      // Sample pixels in this block
+      for (let by = 0; by < blockHeight; by++) {
+        for (let bx = 0; bx < blockWidth; bx++) {
+          const pixelX = blockStartX + bx;
+          const pixelY = blockStartY + by;
+
+          // Skip if outside image bounds
+          if (pixelX >= imageData.width || pixelY >= imageData.height) continue;
+
+          // Get pixel data
+          const index = (pixelY * imageData.width + pixelX) * 4;
+          const r = pixels[index];
+          const g = pixels[index + 1];
+          const b = pixels[index + 2];
+
+          // Calculate brightness using the standard luminance formula (matches vanilla JS example)
+          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+          totalBrightness += brightness;
+          pixelCount++;
+        }
       }
-      
-      // Map brightness to character
+
+      // Calculate average brightness (0-255)
+      const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
+
+      // Map brightness (0-255) to character index (0-characterSet.length-1)
+      const normalizedBrightness = avgBrightness / 255;
       const charIndex = invert
-        ? Math.floor((1 - effectiveBrightness) * (characterSet.length - 1))
-        : Math.floor(effectiveBrightness * (characterSet.length - 1));
-      
+        ? Math.floor((1 - normalizedBrightness) * (characterSet.length - 1))
+        : Math.floor(normalizedBrightness * (characterSet.length - 1));
+
+      // Add character to result
       result += characterSet[charIndex];
     }
     result += '\\n';
   }
-  
+
   return result;
 };
 
@@ -203,62 +123,83 @@ export const imageToColoredAsciiHtml = (
   imageData: ImageData,
   options: Partial<AsciiConverterOptions> = {}
 ): string => {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-  const { width, characterSet, invert, fontSize, lineHeight, fontFamily } = opts;
-  
-  // Better aspect ratio for characters
-  const aspectRatio = 0.4; // Typical character height/width ratio
+  const opts = { ...DEFAULT_OPTIONS, ...options, colored: true };
+  const { width, characterSet, invert, fontSize, fontFamily, lineHeight } = opts;
+
+  // Calculate a better aspect ratio
+  const aspectRatio = 0.5; // Match the regular ASCII conversion
   const height = Math.floor((imageData.height / imageData.width) * width * aspectRatio);
   const blockWidth = Math.floor(imageData.width / width);
   const blockHeight = Math.floor(imageData.height / height);
-  
-  let result = `<div style="font-family: ${fontFamily}; font-size: ${fontSize}px; line-height: ${lineHeight}; letter-spacing: 0; white-space: pre;">`;
-  
-  // Apply brightness and contrast adjustments
-  const adjustedData = applyAdjustments(imageData, opts);
-  
-  // Enhance details with edge detection
-  const enhancedData = enhanceDetails(adjustedData, 0.3);
-  
+
+  const pixels = imageData.data;
+
+  // Start building HTML
+  let result = `<div style="font-family: ${fontFamily}; font-size: ${fontSize}px; line-height: ${lineHeight}; white-space: pre; letter-spacing: 0;">`;
+
   // Process blocks and build colored ASCII art
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      // Get the position of this block in the image
       const blockStartX = x * blockWidth;
       const blockStartY = y * blockHeight;
-      
-      // Get brightness and color with smart sampling
-      const { brightness, color, variance } = getSmartSampleWithColor(
-        enhancedData,
-        blockStartX,
-        blockStartY,
-        blockWidth,
-        blockHeight
-      );
-      
-      // Use variance to select characters that represent detail
-      let effectiveBrightness = brightness;
-      if (variance > 0.2) { // High variance means more detail
-        // Boost contrast in detailed areas
-        effectiveBrightness = brightness > 0.5 ? brightness + 0.1 : brightness - 0.1;
-        effectiveBrightness = Math.max(0, Math.min(1, effectiveBrightness));
+
+      // Calculate average brightness and color for this block
+      let totalR = 0;
+      let totalG = 0;
+      let totalB = 0;
+      let totalBrightness = 0;
+      let pixelCount = 0;
+
+      // Sample pixels in this block
+      for (let by = 0; by < blockHeight; by++) {
+        for (let bx = 0; bx < blockWidth; bx++) {
+          const pixelX = blockStartX + bx;
+          const pixelY = blockStartY + by;
+
+          // Skip if outside image bounds
+          if (pixelX >= imageData.width || pixelY >= imageData.height) continue;
+
+          // Get pixel data
+          const index = (pixelY * imageData.width + pixelX) * 4;
+          const r = pixels[index];
+          const g = pixels[index + 1];
+          const b = pixels[index + 2];
+
+          // Calculate brightness using the standard luminance formula
+          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          totalR += r;
+          totalG += g;
+          totalB += b;
+          totalBrightness += brightness;
+          pixelCount++;
+        }
       }
-      
-      // Map brightness to character
+
+      // Calculate averages
+      const avgR = pixelCount > 0 ? Math.floor(totalR / pixelCount) : 0;
+      const avgG = pixelCount > 0 ? Math.floor(totalG / pixelCount) : 0;
+      const avgB = pixelCount > 0 ? Math.floor(totalB / pixelCount) : 0;
+      const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
+
+      // Map brightness (0-255) to character index (0-characterSet.length-1)
+      const normalizedBrightness = avgBrightness / 255;
       const charIndex = invert
-        ? Math.floor((1 - effectiveBrightness) * (characterSet.length - 1))
-        : Math.floor(effectiveBrightness * (characterSet.length - 1));
-      
+        ? Math.floor((1 - normalizedBrightness) * (characterSet.length - 1))
+        : Math.floor(normalizedBrightness * (characterSet.length - 1));
+
       const char = characterSet[charIndex];
-      
-      // Add colored character with a slight glow effect for Warhammer aesthetic
-      const glowEffect = variance > 0.15 ? 
-        `text-shadow: 0 0 2px rgb(${color.r}, ${color.g}, ${color.b}, 0.8);` : '';
-      
-      result += `<span style="color: rgb(${color.r}, ${color.g}, ${color.b}); ${glowEffect}">${char}</span>`;
+
+      // RGB color string
+      const colorStr = `rgb(${avgR}, ${avgG}, ${avgB})`;
+
+      // Add colored character
+      result += `<span style="color: ${colorStr}">${char}</span>`;
     }
-    result += '\n';
+    result += '<br>';
   }
-  
+
   result += '</div>';
   return result;
 };
@@ -266,7 +207,7 @@ export const imageToColoredAsciiHtml = (
 /**
  * Gets the average brightness of a block of pixels
  */
-const getAverageBrightness = (
+export const getAverageBrightness = (
   imageData: ImageData,
   startX: number,
   startY: number,
@@ -275,28 +216,28 @@ const getAverageBrightness = (
 ): number => {
   let totalBrightness = 0;
   let pixelCount = 0;
-  
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const pixelX = startX + x;
       const pixelY = startY + y;
-      
+
       if (pixelX < imageData.width && pixelY < imageData.height) {
         const index = (pixelY * imageData.width + pixelX) * 4;
         const r = imageData.data[index];
         const g = imageData.data[index + 1];
         const b = imageData.data[index + 2];
-        
+
         // Calculate perceived brightness
         // Using the formula: 0.299*R + 0.587*G + 0.114*B
         const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        
+
         totalBrightness += brightness;
         pixelCount++;
       }
     }
   }
-  
+
   return pixelCount > 0 ? totalBrightness / pixelCount : 0;
 };
 
@@ -319,25 +260,25 @@ const getSmartSampleWithColor = (
   let totalB = 0;
   let pixelCount = 0;
   const brightnessValues: number[] = [];
-  
+
   // Use adaptive sampling - more samples in high-detail areas
   const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 8));
-  
+
   for (let y = 0; y < height; y += sampleStep) {
     for (let x = 0; x < width; x += sampleStep) {
       const pixelX = startX + x;
       const pixelY = startY + y;
-      
+
       if (pixelX < imageData.width && pixelY < imageData.height) {
         const index = (pixelY * imageData.width + pixelX) * 4;
         const r = imageData.data[index];
         const g = imageData.data[index + 1];
         const b = imageData.data[index + 2];
-        
+
         // Calculate perceived brightness with improved formula
         const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         brightnessValues.push(brightness);
-        
+
         totalBrightness += brightness;
         totalR += r;
         totalG += g;
@@ -346,16 +287,16 @@ const getSmartSampleWithColor = (
       }
     }
   }
-  
+
   // Calculate variance (measure of detail)
   const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
   let variance = 0;
-  
+
   for (const b of brightnessValues) {
     variance += (b - avgBrightness) ** 2;
   }
   variance = pixelCount > 1 ? variance / (pixelCount - 1) : 0;
-  
+
   return {
     brightness: avgBrightness,
     color: {
@@ -363,90 +304,22 @@ const getSmartSampleWithColor = (
       g: pixelCount > 0 ? Math.floor(totalG / pixelCount) : 0,
       b: pixelCount > 0 ? Math.floor(totalB / pixelCount) : 0,
     },
-    variance
+    variance,
   };
 };
 
-/**
- * Gets brightness and variance using smart sampling
- */
-const getSmartSample = (
-  imageData: ImageData,
-  startX: number,
-  startY: number,
-  width: number,
-  height: number
-): { brightness: number; variance: number } => {
-  const { brightness, variance } = getSmartSampleWithColor(
-    imageData, startX, startY, width, height
-  );
-  return { brightness, variance };
-};
+// Smart sampling function removed to simplify the code
 
 /**
  * Gets the average brightness and color of a block of pixels (simple version)
  */
-const getAverageBrightnessAndColor = (
+export const getAverageBrightnessAndColor = (
   imageData: ImageData,
   startX: number,
   startY: number,
   width: number,
   height: number
 ): { brightness: number; color: { r: number; g: number; b: number } } => {
-  const { brightness, color } = getSmartSampleWithColor(
-    imageData, startX, startY, width, height
-  );
+  const { brightness, color } = getSmartSampleWithColor(imageData, startX, startY, width, height);
   return { brightness, color };
-};
-
-/**
- * Applies brightness and contrast adjustments to image data
- */
-const applyAdjustments = (
-  imageData: ImageData,
-  options: AsciiConverterOptions
-): ImageData => {
-  const { brightness, contrast } = options;
-  
-  // Create a copy of the image data
-  const canvas = document.createElement('canvas');
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.putImageData(imageData, 0, 0);
-  
-  // Apply brightness and contrast
-  if (brightness !== 0 || contrast !== 0) {
-    const adjustedData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = adjustedData.data;
-    
-    // Convert contrast to factor (range 0-2)
-    const contrastFactor = contrast >= 0 
-      ? 1 + contrast 
-      : 1 / (1 - contrast);
-    
-    // Convert brightness to offset (range -255 to 255)
-    const brightnessOffset = brightness * 255;
-    
-    for (let i = 0; i < data.length; i += 4) {
-      // Apply brightness
-      data[i] += brightnessOffset;
-      data[i + 1] += brightnessOffset;
-      data[i + 2] += brightnessOffset;
-      
-      // Apply contrast
-      data[i] = ((data[i] - 128) * contrastFactor) + 128;
-      data[i + 1] = ((data[i + 1] - 128) * contrastFactor) + 128;
-      data[i + 2] = ((data[i + 2] - 128) * contrastFactor) + 128;
-      
-      // Clamp values
-      data[i] = Math.max(0, Math.min(255, data[i]));
-      data[i + 1] = Math.max(0, Math.min(255, data[i + 1]));
-      data[i + 2] = Math.max(0, Math.min(255, data[i + 2]));
-    }
-    
-    return adjustedData;
-  }
-  
-  return imageData;
 };

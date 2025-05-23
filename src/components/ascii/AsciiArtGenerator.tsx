@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -24,8 +24,14 @@ export const AsciiArtGenerator: React.FC = () => {
     characterSet: CHARACTER_SETS.standard,
   });
   const [previewMode, setPreviewMode] = useState<'ascii' | 'image'>('ascii');
+  const [darkBackground, setDarkBackground] = useState<boolean>(false);
+
+  // Update invert option when background changes to match text/background contrast
+  useEffect(() => {
+    updateOption('invert', darkBackground);
+  }, [darkBackground]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  
+
   // Create canvas element on component mount
   useEffect(() => {
     // Create a canvas element if it doesn't exist
@@ -33,7 +39,7 @@ export const AsciiArtGenerator: React.FC = () => {
       const canvas = document.createElement('canvas');
       canvasRef.current = canvas;
     }
-    
+
     // Cleanup function to handle component unmount
     return () => {
       canvasRef.current = null;
@@ -54,7 +60,7 @@ export const AsciiArtGenerator: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
       const img = new window.Image();
       img.onload = () => {
         setImage(img);
@@ -74,7 +80,7 @@ export const AsciiArtGenerator: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
       const img = new window.Image();
       img.onload = () => {
         setImage(img);
@@ -92,55 +98,58 @@ export const AsciiArtGenerator: React.FC = () => {
   };
 
   // Generate ASCII art from image
-  const generateAsciiArt = useCallback((imgElement: HTMLImageElement) => {
-    setIsProcessing(true);
-    
-    // Use setTimeout to allow the UI to update before processing
-    setTimeout(() => {
-      try {
-        // Create a local copy of the canvas to avoid React lifecycle issues
-        let localCanvas: HTMLCanvasElement;
-        
-        // Ensure canvas ref exists or create a new one
-        if (!canvasRef.current) {
-          localCanvas = document.createElement('canvas');
-          canvasRef.current = localCanvas;
-        } else {
-          localCanvas = canvasRef.current;
+  const generateAsciiArt = useCallback(
+    (imgElement: HTMLImageElement) => {
+      setIsProcessing(true);
+
+      // Use setTimeout to allow the UI to update before processing
+      setTimeout(() => {
+        try {
+          // Create a local copy of the canvas to avoid React lifecycle issues
+          let localCanvas: HTMLCanvasElement;
+
+          // Ensure canvas ref exists or create a new one
+          if (!canvasRef.current) {
+            localCanvas = document.createElement('canvas');
+            canvasRef.current = localCanvas;
+          } else {
+            localCanvas = canvasRef.current;
+          }
+
+          const ctx = localCanvas.getContext('2d');
+
+          if (!ctx) {
+            throw new Error('Could not get 2D context from canvas');
+          }
+
+          // Set canvas dimensions
+          localCanvas.width = imgElement.width;
+          localCanvas.height = imgElement.height;
+
+          // Draw image on canvas
+          ctx.drawImage(imgElement, 0, 0);
+
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, localCanvas.width, localCanvas.height);
+
+          // Generate ASCII art
+          let result;
+          if (options.colored) {
+            result = imageToColoredAsciiHtml(imageData, options);
+            setAsciiArt(result); // Store HTML string for colored output
+          } else {
+            result = imageToAscii(imageData, options);
+            setAsciiArt(result); // Store plain ASCII text
+          }
+          setIsProcessing(false);
+        } catch (error) {
+          console.error('Error generating ASCII art:', error);
+          setIsProcessing(false);
         }
-        
-        const ctx = localCanvas.getContext('2d');
-        
-        if (!ctx) {
-          throw new Error('Could not get 2D context from canvas');
-        }
-
-        // Set canvas dimensions
-        localCanvas.width = imgElement.width;
-        localCanvas.height = imgElement.height;
-
-        // Draw image on canvas
-        ctx.drawImage(imgElement, 0, 0);
-
-        // Get image data
-        const imageData = ctx.getImageData(0, 0, localCanvas.width, localCanvas.height);
-
-        // Generate ASCII art
-        let result;
-        if (options.colored) {
-          result = imageToColoredAsciiHtml(imageData, options);
-          setAsciiArt(result); // Store HTML string for colored output
-        } else {
-          result = imageToAscii(imageData, options);
-          setAsciiArt(result); // Store plain ASCII text
-        }
-        setIsProcessing(false);
-      } catch (error) {
-        console.error('Error generating ASCII art:', error);
-        setIsProcessing(false);
-      }
-    }, 0);
-  }, [options, canvasRef, asciiOutputRef, setAsciiArt, setIsProcessing]);
+      }, 0);
+    },
+    [options, canvasRef, setAsciiArt, setIsProcessing]
+  );
 
   // Update ASCII art when options change
   useEffect(() => {
@@ -154,12 +163,13 @@ export const AsciiArtGenerator: React.FC = () => {
     key: K,
     value: AsciiConverterOptions[K]
   ) => {
-    setOptions((prev) => ({ ...prev, [key]: value }));
+    setOptions(prev => ({ ...prev, [key]: value }));
   };
 
   // Handle character set selection
   const handleCharacterSetChange = (value: string) => {
-    const selectedSet = CHARACTER_SETS[value as keyof typeof CHARACTER_SETS] || CHARACTER_SETS.standard;
+    const selectedSet =
+      CHARACTER_SETS[value as keyof typeof CHARACTER_SETS] || CHARACTER_SETS.standard;
     updateOption('characterSet', selectedSet);
   };
 
@@ -167,11 +177,12 @@ export const AsciiArtGenerator: React.FC = () => {
   const copyToClipboard = () => {
     if (!asciiArt) return;
 
-    navigator.clipboard.writeText(asciiArt.replace(/\\n/g, '\n'))
+    navigator.clipboard
+      .writeText(asciiArt.replace(/\\n/g, '\n'))
       .then(() => {
         alert('ASCII art copied to clipboard!');
       })
-      .catch((err) => {
+      .catch(err => {
         console.error('Failed to copy: ', err);
       });
   };
@@ -184,11 +195,11 @@ export const AsciiArtGenerator: React.FC = () => {
     const file = new Blob([asciiArt.replace(/\\n/g, '\n')], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
     element.download = 'ascii-art.txt';
-    
+
     // Safer approach: don't append to DOM, just simulate click
     element.style.display = 'none';
     element.click();
-    
+
     // Clean up the URL object
     setTimeout(() => {
       URL.revokeObjectURL(element.href);
@@ -228,11 +239,11 @@ export const AsciiArtGenerator: React.FC = () => {
     const file = new Blob([htmlContent], { type: 'text/html' });
     element.href = URL.createObjectURL(file);
     element.download = 'ascii-art.html';
-    
+
     // Safer approach: don't append to DOM, just simulate click
     element.style.display = 'none';
     element.click();
-    
+
     // Clean up the URL object
     setTimeout(() => {
       URL.revokeObjectURL(element.href);
@@ -240,9 +251,9 @@ export const AsciiArtGenerator: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 w-full">
+    <div className="flex flex-col lg:flex-row gap-6 w-full h-full min-h-screen max-h-screen overflow-hidden">
       {/* Input section */}
-      <div className="w-full lg:w-1/3">
+      <div className="w-full lg:w-1/3 lg:max-w-md overflow-y-auto">
         <Card title="Image Input">
           <div
             className="border-2 border-dashed border-gray-700 rounded-md p-6 mb-4 text-center cursor-pointer hover:border-red-700 transition-colors"
@@ -293,17 +304,19 @@ export const AsciiArtGenerator: React.FC = () => {
           {/* Controls */}
           <div className="space-y-4">
             <h3 className="text-red-500 font-bold uppercase tracking-wider mb-2">Configuration</h3>
-            
+
             <Select
               id="character-set"
               label="Character Set"
               options={characterSetOptions}
-              value={Object.keys(CHARACTER_SETS).find(
-                key => CHARACTER_SETS[key as keyof typeof CHARACTER_SETS] === options.characterSet
-              ) || 'standard'}
+              value={
+                Object.keys(CHARACTER_SETS).find(
+                  key => CHARACTER_SETS[key as keyof typeof CHARACTER_SETS] === options.characterSet
+                ) || 'standard'
+              }
               onChange={handleCharacterSetChange}
             />
-            
+
             <Slider
               id="width"
               label="Width"
@@ -311,29 +324,11 @@ export const AsciiArtGenerator: React.FC = () => {
               max={200}
               step={5}
               value={options.width}
-              onChange={(value) => updateOption('width', value)}
+              onChange={value => updateOption('width', value)}
             />
-            
-            <Slider
-              id="contrast"
-              label="Contrast"
-              min={-1}
-              max={1}
-              step={0.1}
-              value={options.contrast}
-              onChange={(value) => updateOption('contrast', value)}
-            />
-            
-            <Slider
-              id="brightness"
-              label="Brightness"
-              min={-1}
-              max={1}
-              step={0.1}
-              value={options.brightness}
-              onChange={(value) => updateOption('brightness', value)}
-            />
-            
+
+            {/* Contrast and brightness controls removed to simplify the interface */}
+
             <Slider
               id="font-size"
               label="Font Size"
@@ -341,9 +336,9 @@ export const AsciiArtGenerator: React.FC = () => {
               max={24}
               step={1}
               value={options.fontSize}
-              onChange={(value) => updateOption('fontSize', value)}
+              onChange={value => updateOption('fontSize', value)}
             />
-            
+
             <Slider
               id="line-height"
               label="Line Height"
@@ -351,23 +346,18 @@ export const AsciiArtGenerator: React.FC = () => {
               max={2}
               step={0.1}
               value={options.lineHeight}
-              onChange={(value) => updateOption('lineHeight', value)}
+              onChange={value => updateOption('lineHeight', value)}
             />
-            
-            <Toggle
-              id="invert"
-              label="Invert Colors"
-              checked={options.invert}
-              onChange={(value) => updateOption('invert', value)}
-            />
-            
+
+            {/* Toggle for invert removed, automatically handled by background changes */}
+
             <Toggle
               id="colored"
               label="Colored Output"
               checked={options.colored}
-              onChange={(value) => updateOption('colored', value)}
+              onChange={value => updateOption('colored', value)}
             />
-            
+
             <div className="flex gap-2 mt-4">
               <Button
                 variant="primary"
@@ -377,13 +367,15 @@ export const AsciiArtGenerator: React.FC = () => {
               >
                 {isProcessing ? 'Processing...' : 'Generate'}
               </Button>
-              
+
               <Button
                 variant="secondary"
-                onClick={() => setOptions({
-                  ...DEFAULT_OPTIONS,
-                  characterSet: CHARACTER_SETS.standard,
-                })}
+                onClick={() =>
+                  setOptions({
+                    ...DEFAULT_OPTIONS,
+                    characterSet: CHARACTER_SETS.standard,
+                  })
+                }
                 className="flex-1"
               >
                 Reset
@@ -394,8 +386,8 @@ export const AsciiArtGenerator: React.FC = () => {
       </div>
 
       {/* Output section */}
-      <div className="w-full lg:w-2/3">
-        <Card title="ASCII Output" className="h-full">
+      <div className="w-full lg:w-2/3 lg:flex-grow overflow-y-auto">
+        <Card title="ASCII Output" className="h-full flex flex-col">
           <div className="flex justify-between mb-4">
             <div className="flex gap-2">
               <Button
@@ -413,45 +405,39 @@ export const AsciiArtGenerator: React.FC = () => {
               >
                 Original
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setDarkBackground(!darkBackground)}
+              >
+                {darkBackground ? 'Light Background' : 'Dark Background'}
+              </Button>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={copyToClipboard}
-                disabled={!asciiArt}
-              >
+              <Button variant="secondary" size="sm" onClick={copyToClipboard} disabled={!asciiArt}>
                 Copy
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={downloadAsciiArt}
-                disabled={!asciiArt}
-              >
+              <Button variant="secondary" size="sm" onClick={downloadAsciiArt} disabled={!asciiArt}>
                 Download TXT
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={downloadAsHtml}
-                disabled={!asciiArt}
-              >
+              <Button variant="secondary" size="sm" onClick={downloadAsHtml} disabled={!asciiArt}>
                 Download HTML
               </Button>
             </div>
           </div>
 
-          <div className="relative bg-black rounded-md overflow-auto h-[500px] p-4">
+          <div
+            className={`relative ${darkBackground ? 'bg-black' : 'bg-white'} rounded-md overflow-auto flex-grow h-full min-h-[50vh] p-4 transition-colors`}
+          >
             {isProcessing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
                 <div className="text-red-500 text-xl font-bold">Processing...</div>
               </div>
             )}
-                       {previewMode === 'ascii' ? (
+            {previewMode === 'ascii' ? (
               <>
                 {asciiArt && !options.colored && (
-                  <div className="text-gray-200 whitespace-pre overflow-auto" ref={asciiOutputRef}>
+                  <div className="whitespace-pre overflow-auto h-full" ref={asciiOutputRef}>
                     <pre
                       style={{
                         fontFamily: options.fontFamily,
@@ -459,7 +445,8 @@ export const AsciiArtGenerator: React.FC = () => {
                         lineHeight: options.lineHeight,
                         margin: 0,
                         whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all'
+                        wordBreak: 'break-all',
+                        color: darkBackground ? '#e5e7eb' : '#111111',
                       }}
                     >
                       {asciiArt.replace(/\\n/g, '\n')}
@@ -473,14 +460,15 @@ export const AsciiArtGenerator: React.FC = () => {
                       fontFamily: options.fontFamily,
                       fontSize: options.fontSize,
                       lineHeight: options.lineHeight,
-                      color: "#e5e7eb",
-                      background: "black",
-                      borderRadius: "0.375rem",
-                      overflow: "auto",
-                      height: "100%",
-                      padding: "1rem",
+                      color: darkBackground ? '#e5e7eb' : '#111111',
+                      background: 'transparent',
+                      borderRadius: '0.375rem',
+                      overflow: 'auto',
+                      height: '100%',
+                      padding: '1rem',
                       whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
+                      wordBreak: 'break-all',
+                      maxHeight: '100%',
                     }}
                     dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
                   />
@@ -525,7 +513,8 @@ export const AsciiArtGenerator: React.FC = () => {
 
           <div className="mt-4 text-gray-500 text-sm">
             <p>
-              <span className="text-red-500 font-bold">IMPERIUM APPROVED:</span> For the glory of the Emperor, transform your pict-captures into holy binary script.
+              <span className="text-red-500 font-bold">IMPERIUM APPROVED:</span> For the glory of
+              the Emperor, transform your pict-captures into holy binary script.
             </p>
           </div>
         </Card>
