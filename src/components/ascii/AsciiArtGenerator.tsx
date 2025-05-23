@@ -7,10 +7,12 @@ import { Slider } from '../ui/Slider';
 import { Select } from '../ui/Select';
 import { Toggle } from '../ui/Toggle';
 import { Card } from '../ui/Card';
+import { Modal } from '../ui/Modal';
 import {
   AsciiConverterOptions,
   DEFAULT_OPTIONS,
   CHARACTER_SETS,
+  FONT_SIZE_LIMITS,
   imageToAscii,
   imageToColoredAsciiHtml,
 } from '../../lib/utils/ascii-converter';
@@ -25,6 +27,7 @@ export const AsciiArtGenerator: React.FC = () => {
   });
   const [previewMode, setPreviewMode] = useState<'ascii' | 'image'>('ascii');
   const [darkBackground, setDarkBackground] = useState<boolean>(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
 
   // Update invert option when background changes to match text/background contrast
   useEffect(() => {
@@ -251,7 +254,7 @@ export const AsciiArtGenerator: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 w-full h-full min-h-screen max-h-screen overflow-hidden">
+    <div className="flex flex-col lg:flex-row gap-6 w-full h-full overflow-hidden">
       {/* Input section */}
       <div className="w-full lg:w-1/3 lg:max-w-md overflow-y-auto">
         <Card title="Image Input">
@@ -332,8 +335,8 @@ export const AsciiArtGenerator: React.FC = () => {
             <Slider
               id="font-size"
               label="Font Size"
-              min={6}
-              max={24}
+              min={FONT_SIZE_LIMITS.min}
+              max={FONT_SIZE_LIMITS.max}
               step={1}
               value={options.fontSize}
               onChange={value => updateOption('fontSize', value)}
@@ -370,12 +373,15 @@ export const AsciiArtGenerator: React.FC = () => {
 
               <Button
                 variant="secondary"
-                onClick={() =>
+                onClick={() => {
+                  // Always reset to white background
+                  setDarkBackground(false);
                   setOptions({
                     ...DEFAULT_OPTIONS,
                     characterSet: CHARACTER_SETS.standard,
-                  })
-                }
+                    invert: false // White background uses non-inverted colors
+                  });
+                }}
                 className="flex-1"
               >
                 Reset
@@ -386,9 +392,9 @@ export const AsciiArtGenerator: React.FC = () => {
       </div>
 
       {/* Output section */}
-      <div className="w-full lg:w-2/3 lg:flex-grow overflow-y-auto">
+      <div className="w-full lg:w-2/3 lg:flex-grow">
         <Card title="ASCII Output" className="h-full flex flex-col">
-          <div className="flex justify-between mb-4">
+          <div className="flex justify-between mb-4 flex-shrink-0">
             <div className="flex gap-2">
               <Button
                 variant={previewMode === 'ascii' ? 'primary' : 'secondary'}
@@ -412,6 +418,14 @@ export const AsciiArtGenerator: React.FC = () => {
               >
                 {darkBackground ? 'Light Background' : 'Dark Background'}
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsFullscreenOpen(true)}
+                disabled={!asciiArt}
+              >
+                Fullscreen
+              </Button>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={copyToClipboard} disabled={!asciiArt}>
@@ -427,7 +441,7 @@ export const AsciiArtGenerator: React.FC = () => {
           </div>
 
           <div
-            className={`relative ${darkBackground ? 'bg-black' : 'bg-white'} rounded-md overflow-auto flex-grow h-full min-h-[50vh] p-4 transition-colors`}
+            className={`relative ${darkBackground ? 'bg-black' : 'bg-white'} rounded-md overflow-hidden flex-grow h-[50vh] p-4 transition-colors flex flex-col`}
           >
             {isProcessing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
@@ -468,7 +482,6 @@ export const AsciiArtGenerator: React.FC = () => {
                       padding: '1rem',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-all',
-                      maxHeight: '100%',
                     }}
                     dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
                   />
@@ -511,7 +524,7 @@ export const AsciiArtGenerator: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-4 text-gray-500 text-sm">
+          <div className="mt-4 text-gray-500 text-sm flex-shrink-0">
             <p>
               <span className="text-red-500 font-bold">IMPERIUM APPROVED:</span> For the glory of
               the Emperor, transform your pict-captures into holy binary script.
@@ -522,6 +535,52 @@ export const AsciiArtGenerator: React.FC = () => {
 
       {/* Hidden canvas for image processing */}
       <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Fullscreen modal */}
+      <Modal
+        isOpen={isFullscreenOpen}
+        onClose={() => setIsFullscreenOpen(false)}
+        title="ASCII Art Preview"
+      >
+        <div 
+          className={`p-2 rounded-md ${darkBackground ? 'bg-black' : 'bg-white'}`}
+          style={{ display: 'inline-block', minWidth: 'fit-content' }}
+        >
+          {options.colored ? (
+            <div
+              style={{
+                fontFamily: 'monospace', // Always use monospace for optimal viewing
+                fontSize: FONT_SIZE_LIMITS.optimal, // Use optimal font size in fullscreen
+                lineHeight: options.lineHeight, // Use the current line height
+                color: darkBackground ? '#e5e7eb' : '#111111',
+                background: 'transparent',
+                display: 'block', // Use block to maintain width
+                whiteSpace: 'pre', // Use pre to preserve formatting
+                letterSpacing: 0, // No letter spacing for proper alignment
+                overflow: 'visible', // Ensure content is not cut off
+              }}
+              dangerouslySetInnerHTML={{ __html: asciiArt.replace(/\\n/g, '\n') }}
+            />
+          ) : (
+            <pre
+              style={{
+                fontFamily: 'monospace', // Always use monospace for optimal viewing
+                fontSize: FONT_SIZE_LIMITS.optimal, // Use optimal font size in fullscreen
+                lineHeight: options.lineHeight, // Use the current line height
+                margin: 0,
+                padding: 0,
+                whiteSpace: 'pre', // Use pre to preserve formatting
+                letterSpacing: 0, // No letter spacing for proper alignment
+                display: 'block', // Use block to maintain width
+                color: darkBackground ? '#e5e7eb' : '#111111',
+                overflow: 'visible', // Ensure content is not cut off
+              }}
+            >
+              {asciiArt.replace(/\\n/g, '\n')}
+            </pre>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

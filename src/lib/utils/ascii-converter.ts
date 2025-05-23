@@ -26,15 +26,21 @@ export const DEFAULT_OPTIONS: AsciiConverterOptions = {
   width: 100,
   invert: true, // Default to inverted for white background (dark text on light background)
   colored: false,
-  lineHeight: 1,
-  fontSize: 12,
+  lineHeight: 1, // Reduced line height for better proportions
+  fontSize: 13,
   fontFamily: 'monospace',
+};
+
+// Standard font size ranges for good looking ASCII art
+export const FONT_SIZE_LIMITS = {
+  min: 8,
+  max: 16,
+  optimal: 13
 };
 
 // Predefined character sets
 export const CHARACTER_SETS = {
   standard: '@%#*+=-:. ',
-  simple: '#:.',
   blocks: '█▓▒░ ',
 };
 
@@ -191,8 +197,19 @@ export const imageToColoredAsciiHtml = (
 
       const char = characterSet[charIndex];
 
-      // RGB color string
-      const colorStr = `rgb(${avgR}, ${avgG}, ${avgB})`;
+      // Enhance colors for better visibility on white backgrounds
+      let colorStr;
+      if (!invert) {
+        // For dark background: use original colors
+        colorStr = `rgb(${avgR}, ${avgG}, ${avgB})`;
+      } else {
+        // For white background: darken colors to ensure visibility
+        // Reduce brightness by 30% to ensure visibility on white
+        const darkR = Math.max(0, Math.floor(avgR * 0.7));
+        const darkG = Math.max(0, Math.floor(avgG * 0.7));
+        const darkB = Math.max(0, Math.floor(avgB * 0.7));
+        colorStr = `rgb(${darkR}, ${darkG}, ${darkB})`;
+      }
 
       // Add colored character
       result += `<span style="color: ${colorStr}">${char}</span>`;

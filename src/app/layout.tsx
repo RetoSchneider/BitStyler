@@ -13,10 +13,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased min-h-screen">
-        <div className="min-h-screen flex flex-col">
-          <header className="bg-black py-4 border-b-2 border-red-900">
+    <html lang="en" className="h-full overflow-hidden">
+      <body className="antialiased h-full overflow-hidden">
+        <div className="h-full flex flex-col fixed inset-0">
+          <header className="bg-black py-4 border-b-2 border-red-900 flex-shrink-0">
             <div className="container mx-auto px-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
@@ -39,11 +39,11 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="flex-grow py-8">
+          <main className="flex-grow overflow-auto py-8">
             <div className="container mx-auto px-4">{children}</div>
           </main>
 
-          <footer className="bg-black py-4 border-t-2 border-red-900 text-gray-600 text-sm">
+          <footer className="bg-black py-4 border-t-2 border-red-900 text-gray-600 text-sm flex-shrink-0">
             <div className="container mx-auto px-4">
               <div className="flex justify-between items-center">
                 <div>
