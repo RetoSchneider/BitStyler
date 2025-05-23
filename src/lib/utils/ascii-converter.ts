@@ -26,8 +26,8 @@ export const DEFAULT_OPTIONS: AsciiConverterOptions = {
   width: 100,
   invert: true, // Default to inverted for white background (dark text on light background)
   colored: false,
-  lineHeight: 1, // Reduced line height for better proportions
-  fontSize: 13,
+  lineHeight: 1.2, // Standard terminal line height
+  fontSize: 12,    // Standard terminal/notepad font size
   fontFamily: 'monospace',
 };
 
