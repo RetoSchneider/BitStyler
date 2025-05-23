@@ -305,63 +305,69 @@ export const AsciiArtGenerator: React.FC = () => {
           </div>
 
           {/* Controls */}
-          <div className="space-y-4">
-            <h3 className="text-red-500 font-bold uppercase tracking-wider mb-2">Configuration</h3>
+          <div className="space-y-6">
+            {/* Text Output Settings */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-200 mb-3 border-b border-gray-700 pb-1">
+                Text Output Settings (affects both TXT and HTML)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-600">
+                <Select
+                  id="character-set"
+                  label="Character Set"
+                  value={Object.entries(CHARACTER_SETS).find(([_, v]) => v === options.characterSet)?.[0] || 'standard'}
+                  onChange={(value: string) => {
+                    const selectedSet = CHARACTER_SETS[value as keyof typeof CHARACTER_SETS] || CHARACTER_SETS.standard;
+                    updateOption('characterSet', selectedSet);
+                  }}
+                  options={Object.entries(CHARACTER_SETS).map(([key]) => ({
+                    value: key,
+                    label: key.charAt(0).toUpperCase() + key.slice(1)
+                  }))}
+                />
 
-            <Select
-              id="character-set"
-              label="Character Set"
-              options={characterSetOptions}
-              value={
-                Object.keys(CHARACTER_SETS).find(
-                  key => CHARACTER_SETS[key as keyof typeof CHARACTER_SETS] === options.characterSet
-                ) || 'standard'
-              }
-              onChange={handleCharacterSetChange}
-            />
+                <Slider
+                  id="width"
+                  label={`Width: ${options.width} chars`}
+                  value={options.width}
+                  onChange={(value) => updateOption('width', value)}
+                  min={20}
+                  max={200}
+                  step={1}
+                />
+              </div>
+            </div>
 
-            <Slider
-              id="width"
-              label="Width"
-              min={20}
-              max={150} // Reduced max width to prevent breaking
-              step={5}
-              value={options.width}
-              onChange={value => updateOption('width', value)}
-            />
+            {/* Display Settings */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-200 mb-3 border-b border-gray-700 pb-1">
+                Display Settings (HTML only)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-600">
+                <Slider
+                  id="font-size"
+                  label={`Font Size: ${options.fontSize}px`}
+                  value={options.fontSize}
+                  onChange={(value) => updateOption('fontSize', value)}
+                  min={FONT_SIZE_LIMITS.min}
+                  max={FONT_SIZE_LIMITS.max}
+                  step={0.5}
+                />
 
-            {/* Contrast and brightness controls removed to simplify the interface */}
+                <Slider
+                  id="line-height"
+                  label={`Line Height: ${options.lineHeight}`}
+                  value={options.lineHeight}
+                  onChange={(value) => updateOption('lineHeight', value)}
+                  min={0.5}
+                  max={1.4}
+                  step={0.1}
+                />
+              </div>
+            </div>
 
-            <Slider
-              id="font-size"
-              label="Font Size"
-              min={FONT_SIZE_LIMITS.min}
-              max={FONT_SIZE_LIMITS.max}
-              step={1}
-              value={options.fontSize}
-              onChange={value => updateOption('fontSize', value)}
-            />
-
-            <Slider
-              id="line-height"
-              label="Line Height"
-              min={0.5}
-              max={1.2}
-              step={0.1}
-              value={options.lineHeight}
-              onChange={value => updateOption('lineHeight', value)}
-            />
-
-            {/* Toggle for invert removed, automatically handled by background changes */}
-
-            <Toggle
-              id="colored"
-              label="Colored Output"
-              checked={options.colored}
-              onChange={value => updateOption('colored', value)}
-            />
-
-            <div className="flex gap-2 mt-4">
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2">
               <Button
                 variant="primary"
                 onClick={() => image && generateAsciiArt(image)}
@@ -370,16 +376,14 @@ export const AsciiArtGenerator: React.FC = () => {
               >
                 {isProcessing ? 'Processing...' : 'Generate'}
               </Button>
-
               <Button
                 variant="secondary"
                 onClick={() => {
-                  // Always reset to white background
                   setDarkBackground(false);
                   setOptions({
                     ...DEFAULT_OPTIONS,
                     characterSet: CHARACTER_SETS.standard,
-                    invert: false // White background uses non-inverted colors
+                    invert: false
                   });
                 }}
                 className="flex-1"
